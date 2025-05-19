@@ -50,6 +50,7 @@ namespace Console_JWT_Example.JWS
                 signatureBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(signingInput));
             }
             string encodedSignature = Base64UrlEncode(signatureBytes);
+            // encodedHeader.encodedPayload.encodedSignature
             string JWS = $"{signingInput}.{encodedSignature}";
             Console.WriteLine("JWS:");
             Console.WriteLine(JWS);

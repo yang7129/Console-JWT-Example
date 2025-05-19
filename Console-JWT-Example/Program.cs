@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using Console_JWT_Example.JWT;
 using Console_JWT_Example.JWS;
+using Console_JWT_Example.JWE;
 // Install Nuget Portable.BouncyCastle-V1.9.0
 Console.WriteLine("Start=============");
 // reference
@@ -10,9 +11,13 @@ Console.WriteLine("Start=============");
 //JWT JWT = new JWT();
 //JWT.exmple_HS256();
 //#endregion
-#region JWS
-JWS JWS = new JWS();
-JWS.exmple_HMACSHA_256();
+//#region JWS
+//JWS JWS = new JWS();
+//JWS.exmple_HMACSHA_256();
+//#endregion
+#region JWE
+JWE JWE = new JWE();
+JWE.exmple_AESKWandAES128CBCHMACSHA256();
 #endregion
 
 Console.WriteLine("End=============");
