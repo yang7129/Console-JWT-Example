@@ -17,7 +17,8 @@ Console.WriteLine("Start=============");
 //#endregion
 #region JWE
 JWE JWE = new JWE();
-JWE.exmple_AESKWandAES128CBCHMACSHA256();
+//JWE.exmple_AESKW_AES_128_CBC_HMAC_SHA_256();
+JWE.exmple_RSAOAEP_A128CBC_HS256();
 #endregion
 
 Console.WriteLine("End=============");

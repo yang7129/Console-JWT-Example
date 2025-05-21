@@ -11,12 +11,12 @@ namespace Console_JWT_Example
         // Base64Url 編碼（去掉 =、替換 URL 安全字元）
         protected string Base64UrlEncode(byte[] input)
         {
-            return Convert.ToBase64String(input).Replace('+', '-').Replace('/', '_').Replace("=", "");
+            return Convert.ToBase64String(input).Replace("+", "-").Replace("/", "_").Replace("=", ""); ;
         }
         protected string Base64UrlEncode(string input)
         {
             byte[] InputBytes = Encoding.UTF8.GetBytes(input);
-            return Convert.ToBase64String(InputBytes).Replace('+', '-').Replace('/', '_').Replace("=", "");
+            return Convert.ToBase64String(InputBytes).Replace("+", "-").Replace("/", "_").Replace("=", ""); ;
         }
         // Base64Url 解碼（補上 =、還原 URL 安全字元）
         protected byte[] Base64UrlDecode(string input)

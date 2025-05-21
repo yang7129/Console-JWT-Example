@@ -1,7 +1,11 @@
 ﻿using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Crypto.Encodings;
+using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.OpenSsl;
+using Org.BouncyCastle.Utilities.Encoders;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -11,15 +15,17 @@ using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Asn1.X509;
 
 namespace Console_JWT_Example.JWE
 {
     internal class JWE : Base
     {
-        public void exmple_AESKWandAES128CBCHMACSHA256()
+        public void exmple_AESKW_AES_128_CBC_HMAC_SHA_256()
         {
             //Example JWE Using AES Key Wrap and AES_128_CBC_HMAC_SHA_256
-            Console.WriteLine("exmple_AESKWandAES128CBCHMACSHA256");
+            Console.WriteLine("exmple_AESKW_AES_128_CBC_HMAC_SHA_256");
             // JWE https://www.rfc-editor.org/rfc/rfc7516#page-41
             // JWE = eyJhbGciOiJBMTI4S1ciLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0.6KB707dM9YTIgHtLvtgWQ8mKwboJW3of9locizkDTHzBC2IlrT1oOQ.AxY8DCtDaGlsbGljb3RoZQ.KDlTtXchhZTGufMYmOYGS4HffxPSUrfmqCHXaI9wOGY.U0m_YmjN04DJvceFICbCVQ
             // IV = [3, 22, 60, 12, 43, 67, 104, 105, 108, 108, 105, 99, 111, 116, 104, 101] // base64url AxY8DCtDaGlsbGljb3RoZQ
@@ -93,16 +99,16 @@ namespace Console_JWT_Example.JWE
 
             string HeaderJsonDecrypt = Base64UrlDecodeToString(Parts[0]);
             Console.WriteLine("Check？ HeaderJsonDecrypt=HeaderJson |" + HeaderJsonDecrypt.Equals(HeaderJson));
-            byte[] EncryptedKeyDecrypt = Base64UrlDecode(Parts[1]); 
+            byte[] EncryptedKeyDecrypt = Base64UrlDecode(Parts[1]);
             Console.WriteLine("Check？ EncryptedKeyDecrypt=EncryptedKey |" + BytesToString(EncryptedKeyDecrypt).Equals(BytesToString(EncryptedKey)));
             byte[] IVDecrypt = Base64UrlDecode(Parts[2]);
             Console.WriteLine("Check？ IVDecrypt=IV |" + BytesToString(IVDecrypt).Equals(BytesToString(IV)));
             byte[] CiphertextDecrypt = Base64UrlDecode(Parts[3]);
             Console.WriteLine("Check？ CiphertextDecrypt=Ciphertext |" + BytesToString(CiphertextDecrypt).Equals(BytesToString(Ciphertext)));
-            byte[] TagDecrypt = Base64UrlDecode(Parts[4]); 
+            byte[] TagDecrypt = Base64UrlDecode(Parts[4]);
             Console.WriteLine("Check？ TagDecrypt=Tag |" + BytesToString(TagDecrypt).Equals(BytesToString(Tag)));
 
-            byte[] KEKDecrypt = Base64UrlDecode("GawgguFyGrWKav7AX4VKUg"); 
+            byte[] KEKDecrypt = Base64UrlDecode("GawgguFyGrWKav7AX4VKUg");
             Console.WriteLine("Check？ KEKDecrypt=KEK |" + BytesToString(KEKDecrypt).Equals(BytesToString(KEK)));
             byte[] AadDecrypt = StringToBytes(Parts[0]);
             Console.WriteLine("Check？ AadDecrypt=Aad |" + BytesToString(AadDecrypt).Equals(BytesToString(Aad)));
@@ -135,7 +141,7 @@ namespace Console_JWT_Example.JWE
                     Console.WriteLine("解密失敗|");
                     return;
                 }
-            } 
+            }
             var AesDecrypt = Aes.Create();
             AesDecrypt.Mode = CipherMode.CBC;
             AesDecrypt.Padding = PaddingMode.PKCS7;
@@ -163,6 +169,177 @@ namespace Console_JWT_Example.JWE
                 offset += arr.Length;
             }
             return result;
+        }
+
+        public void exmple_RSAOAEP_A128CBC_HS256()
+        {
+            //Example JWE using RSAES-OAEP and AES GCM
+            Console.WriteLine("exmple_RSAOAEP_A128CBC_HS256");
+
+            string plaintext = "The true sign of intelligence is not knowledge but imagination.";
+            string headerJson = "{\"alg\":\"RSA-OAEP\",\"enc\":\"A256GCM\"}";
+            byte[] cek = new byte[] {
+            177,161,244,128,84,143,225,115,63,180,3,255,107,154,212,246,
+            138,7,110,91,112,46,34,105,47,130,203,46,122,234,64,252
+        };
+            byte[] iv = new byte[] { 227, 197, 117, 252, 2, 219, 233, 68, 180, 225, 77, 219 };
+
+            // 1. Base64URL encode header
+            string encodedHeader = Base64UrlEncode(Encoding.UTF8.GetBytes(headerJson));
+
+            // 2. AAD
+            byte[] aad = Encoding.UTF8.GetBytes(encodedHeader);
+
+            // 3. AES-GCM encryption
+            byte[] plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
+            
+            GcmBlockCipher gcm = new GcmBlockCipher(new AesEngine());
+            AeadParameters parameters = new AeadParameters(new KeyParameter(cek), 128, iv, aad);
+            gcm.Init(true, parameters);
+
+
+            // 預留 tag 的空間（plaintext 長度 + 16 bytes）
+            byte[] output = new byte[plaintextBytes.Length + 16];
+            int outLen = gcm.ProcessBytes(plaintextBytes, 0, plaintextBytes.Length, output, 0);
+            gcm.DoFinal(output, outLen);
+
+
+            // 切出 ciphertext 與 tag
+            byte[] ciphertext = new byte[plaintextBytes.Length];
+            byte[] tag = new byte[16];
+
+            Array.Copy(output, 0, ciphertext, 0, plaintextBytes.Length);
+            Array.Copy(output, plaintextBytes.Length, tag, 0, 16);
+
+            // 4. Encrypt CEK with RSA-OAEP using public key 
+            AsymmetricKeyParameter publicKey;
+
+            //            string rsaPublicKeyPem = @"-----BEGIN PUBLIC KEY-----
+            //MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA90fF34qtPBKyaquH66Qv
+            //b8yMOY5ALmzmT2CuDgFem5uy8sxZz+oan0RIQYNTQxv6F6Vr16UE3ReWEADf0sUT
+            //l36EdkvpM0ro3CMsOdTh87QAIH67yd/F5pOXpD7IFO0lphGg1tstHyR3LmGeNok0
+            //ZaNrza4JRlRFA3VcBY1dM5dHwiM9kk7Gk8MwxFuEhJnebtdezTTvH3VUV8FLu6ho
+            //Ncl45sd9ihQmRNlsGJCtxnUD9LpgJefOG0QLZfG61TMddNEUqtc5iImXdD0TeGDl
+            //ZxdJKVqC6N8MYMhdc1JsDXPK7/FQQS2UKAAv0RRkT+1xhOu/RVRqptIU081GTZWg
+            //YQIDAQAB
+            //-----END PUBLIC KEY-----";
+            //using (var reader = new StringReader(rsaPublicKeyPem))
+            //{
+            //    var pemReader = new PemReader(reader);
+            //    publicKey = (AsymmetricKeyParameter)pemReader.ReadObject();
+            //} 
+            //改為檔案讀取
+            string publicKeyPath = Path.Combine("key", "public.pem");
+            using (var reader = File.OpenText(publicKeyPath))
+            {
+                var pemReader = new PemReader(reader);
+                publicKey = (AsymmetricKeyParameter)pemReader.ReadObject();
+            } 
+            // 如需轉成 RsaKeyParameters：
+            RsaKeyParameters rsaKey = (RsaKeyParameters)publicKey;
+
+
+
+            //AsymmetricCipherKeyPair keyPair;
+            //using (var reader = new StringReader(rsaPrivateKeyPem))
+            //{
+            //    var pemReader = new PemReader(reader);
+            //    keyPair = (AsymmetricCipherKeyPair)pemReader.ReadObject();
+            //}
+
+            //var rsaPublic = ((RsaKeyParameters)keyPair.Public);
+
+            //這邊為 導出 PEM ======
+            //using (var sw = new StringWriter())
+            //{
+            //    var pemWriter = new PemWriter(sw);
+            //    pemWriter.WriteObject(rsaPublic);
+            //    pemWriter.Writer.Flush();
+
+            //    string publicKeyPem = sw.ToString();
+            //    Console.WriteLine("publicKeyPem" + publicKeyPem);
+            //} 
+            //這邊為 導出 PEM ======
+
+            var encryptEngine = new OaepEncoding(new RsaEngine(), new Sha1Digest());
+            //encryptEngine.Init(true, rsaPublic);
+            encryptEngine.Init(true, rsaKey);
+            byte[] encryptedCek = encryptEngine.ProcessBlock(cek, 0, cek.Length);
+
+            // 5. Compact JWE parts
+            string part1 = encodedHeader;
+            string part2 = Base64UrlEncode(encryptedCek);
+            string part3 = Base64UrlEncode(iv);
+            string part4 = Base64UrlEncode(ciphertext);
+            string part5 = Base64UrlEncode(tag);
+
+            string jwe = $"{part1}.{part2}.{part3}.{part4}.{part5}";
+            Console.WriteLine("Compact JWE:\n" + jwe);
+
+            // === Decrypt ===
+            // === 解密階段 ===
+            //            string rsaPrivatePem = @"-----BEGIN RSA PRIVATE KEY-----
+            //MIIEpAIBAAKCAQEA90fF34qtPBKyaquH66Qvb8yMOY5ALmzmT2CuDgFem5uy8sxZ
+            //z+oan0RIQYNTQxv6F6Vr16UE3ReWEADf0sUTl36EdkvpM0ro3CMsOdTh87QAIH67
+            //yd/F5pOXpD7IFO0lphGg1tstHyR3LmGeNok0ZaNrza4JRlRFA3VcBY1dM5dHwiM9
+            //kk7Gk8MwxFuEhJnebtdezTTvH3VUV8FLu6hoNcl45sd9ihQmRNlsGJCtxnUD9Lpg
+            //JefOG0QLZfG61TMddNEUqtc5iImXdD0TeGDlZxdJKVqC6N8MYMhdc1JsDXPK7/FQ
+            //QS2UKAAv0RRkT+1xhOu/RVRqptIU081GTZWgYQIDAQABAoIBAAHyiaFFrjDUjF1o
+            //8ap2Se3ZWGrdHw4Gi0dJgYFoexpiXuXI3HW12CUUNHX4nuuewSjVw4xIl0nW9VZ1
+            //rU2TggCdzVUBqsndv4j5SXBAqBFjY+NdoCS6O4yh8a4oVOrORc9BoQjEI940izA9
+            //MlHnYXdh8rfFVLseL4d0EYgVKYxeEwr0d3qI+1F5qLreVDGAmreEgh4KhHgnv88f
+            //c/TyYNeU9si0Hwu+0yqYImKEpkSglIfghnRcZqEYkTWlibccMTnrpx9AV4RwZbsO
+            //BK6rXaSNv1dGu5obgJLnAEtTsiIIyWC3k2NRV+FriS9sMrux/ee+5bbt2hEgx8wD
+            //XBrOQxkCgYEA+05BnHRbQCdq/KTj5RTHOTHzSEoRH/IuBA8hXdiMzSQ07L+8cyUu
+            //HggTsiTpdySzGiyKvBHn2ukm3EVcVotpahYw3wqe7IRbVvu1D1sgWXvT5AADKABL
+            //Idp8XWpFnSd/5jeI8wqdAvzHYDYS0V4gJquHG0zn2IuBuKIZLsHqU0kCgYEA++ZE
+            //fba9eK4zRgcCiQOrmbUPa9zJp8hrWoPkJvoxGcFiw/5q9KLW0uUj+juOhOzacvLA
+            //rn0Zr15orFL9vrxJYPoe+rX//sGiayahEhhkafuP1P+j7JCcAqDLv2RhtO4NezGU
+            //ZPQ7xqsrnVf6vRiArAKY7TeR1cJbXxYo16o9TFkCgYEA4VaJdI3NKNhvkX0VMFuS
+            //TFHi0MZBVsDkzBT5GVpM3sGBh2xhwWnsUVdyucFpasEIrAaWnA7+NIftpYO4SY4W
+            //ht7BEa5HVNNVx8hJ0Swn9LUZCY+NRPgGZqOv8l+Rblp1z+uqLCwvH/ejmzzBYOUi
+            //tSoHKs6p8b0eI32OUSPmRqkCgYAGGJJ7wFphe0W+YhkLm80hUSJoZ9VxfAYtEJgK
+            //4W8iwm1TdOq9tNsiC22NdreCPAElWv6SunBOsCg0U2XUodXcxPDO/GyPi7wUf8DS
+            //IUj8z5uxeeZLqUw9PAryPMmoiUJGQvLmZoqzyhyqGCD3RoqGnyF4TCn5VFTFvlGK
+            //tpH5MQKBgQC2Wq359pwPN+aanBSBGns0SIL5GJZ8bAkBi/DHqSqWx6aMiOgo+sD2
+            //nVchW3k0bnZqB7Mpm1XXQAx7j2gJG/vGguSvcopyAOerawtJulgZW7kZOZ+sK+QQ
+            //jnR0CxHPrlFcRJiE1L40adTxpzsvwSYqXbRnCPqM86u0HU2bEY1YXg==
+            //-----END RSA PRIVATE KEY-----";
+
+            // 解密 encryptedCek
+            AsymmetricCipherKeyPair keyPair;
+            //using (var reader = new System.IO.StringReader(rsaPrivatePem))
+            //{
+            //    var pemReader = new PemReader(reader);
+            //    keyPair = (AsymmetricCipherKeyPair)pemReader.ReadObject();
+            //}
+            string privateKeyPath = Path.Combine("key", "private.pem");
+            using (var reader = File.OpenText(privateKeyPath))
+            {
+                var pemReader = new PemReader(reader);
+                keyPair = (AsymmetricCipherKeyPair)pemReader.ReadObject(); 
+            }
+
+            var decryptEngine = new OaepEncoding(new RsaEngine());
+            decryptEngine.Init(false, keyPair.Private);
+            byte[] decryptedCek = decryptEngine.ProcessBlock(encryptedCek, 0, encryptedCek.Length);
+
+            // 解密 AES-GCM ciphertext
+            GcmBlockCipher gcmDec = new GcmBlockCipher(new AesEngine());
+            AeadParameters decParams = new AeadParameters(new KeyParameter(decryptedCek), 128, iv, aad);
+            gcmDec.Init(false, decParams);
+
+            byte[] cipherPlusTag = new byte[ciphertext.Length + tag.Length];
+            Array.Copy(ciphertext, 0, cipherPlusTag, 0, ciphertext.Length);
+            Array.Copy(tag, 0, cipherPlusTag, ciphertext.Length, tag.Length);
+
+            byte[] decrypted = new byte[ciphertext.Length];
+            int len2 = gcmDec.ProcessBytes(cipherPlusTag, 0, cipherPlusTag.Length, decrypted, 0);
+            gcmDec.DoFinal(decrypted, len2);
+
+            Console.WriteLine("\n[Decrypted Plaintext]");
+            Console.WriteLine(Encoding.UTF8.GetString(decrypted));
+             
         }
     }
 }
