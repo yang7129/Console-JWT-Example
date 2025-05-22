@@ -1,23 +1,22 @@
 ﻿using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Engines;
-using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Crypto.Parameters; 
 using Org.BouncyCastle.Crypto.Encodings;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Utilities.Encoders;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Math;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
-using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Asn1.X509;
-
 namespace Console_JWT_Example.JWE
 {
     internal class JWE : Base
@@ -192,7 +191,7 @@ namespace Console_JWT_Example.JWE
 
             // 3. AES-GCM encryption
             byte[] plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
-            
+
             GcmBlockCipher gcm = new GcmBlockCipher(new AesEngine());
             AeadParameters parameters = new AeadParameters(new KeyParameter(cek), 128, iv, aad);
             gcm.Init(true, parameters);
@@ -234,7 +233,7 @@ namespace Console_JWT_Example.JWE
             {
                 var pemReader = new PemReader(reader);
                 publicKey = (AsymmetricKeyParameter)pemReader.ReadObject();
-            } 
+            }
             // 如需轉成 RsaKeyParameters：
             RsaKeyParameters rsaKey = (RsaKeyParameters)publicKey;
 
@@ -317,7 +316,7 @@ namespace Console_JWT_Example.JWE
             using (var reader = File.OpenText(privateKeyPath))
             {
                 var pemReader = new PemReader(reader);
-                keyPair = (AsymmetricCipherKeyPair)pemReader.ReadObject(); 
+                keyPair = (AsymmetricCipherKeyPair)pemReader.ReadObject();
             }
 
             var decryptEngine = new OaepEncoding(new RsaEngine());
@@ -339,7 +338,107 @@ namespace Console_JWT_Example.JWE
 
             Console.WriteLine("\n[Decrypted Plaintext]");
             Console.WriteLine(Encoding.UTF8.GetString(decrypted));
+
+        } 
+        public void exmple_RSAOAEP256_A128CBC_HS256()
+        {
+            //Example JWE using RSAES-OAEP and AES GCM
+            Console.WriteLine("exmple_RSAOAEP256_A128CBC_HS256");
+            // 1. RFC 範例 Header
+            string plaintext = "The true sign of intelligence is not knowledge but imagination.";
+            string headerJson = "{\"alg\":\"RSA-OAEP-256\",\"enc\":\"A256GCM\"}";
+            byte[] cek = new byte[] {
+                177,161,244,128,84,143,225,115,63,180,3,255,107,154,212,246,
+                138,7,110,91,112,46,34,105,47,130,203,46,122,234,64,252
+            };
+            byte[] iv = new byte[] { 227, 197, 117, 252, 2, 219, 233, 68, 180, 225, 77, 219 };
+
+            // 1. Base64URL encode header
+            string encodedHeader = Base64UrlEncode(Encoding.UTF8.GetBytes(headerJson));
+
+            // 2. AAD
+            byte[] aad = Encoding.UTF8.GetBytes(encodedHeader);
+
+            // 3. AES-GCM encryption
+            byte[] plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
+
+            GcmBlockCipher gcm = new GcmBlockCipher(new AesEngine());
+            AeadParameters parameters = new AeadParameters(new KeyParameter(cek), 128, iv, aad);
+            gcm.Init(true, parameters);
+
+
+            // 預留 tag 的空間（plaintext 長度 + 16 bytes）
+            byte[] output = new byte[plaintextBytes.Length + 16];
+            int outLen = gcm.ProcessBytes(plaintextBytes, 0, plaintextBytes.Length, output, 0);
+            gcm.DoFinal(output, outLen);
+
+
+            // 切出 ciphertext 與 tag
+            byte[] ciphertext = new byte[plaintextBytes.Length];
+            byte[] tag = new byte[16];
+
+            Array.Copy(output, 0, ciphertext, 0, plaintextBytes.Length);
+            Array.Copy(output, plaintextBytes.Length, tag, 0, 16);
+
+            // 4. Encrypt CEK with RSA-OAEP using public key 
+            AsymmetricKeyParameter publicKey;
              
+            //改為檔案讀取
+            string publicKeyPath = Path.Combine("key", "public.pem");
+            using (var reader = File.OpenText(publicKeyPath))
+            {
+                var pemReader = new PemReader(reader);
+                publicKey = (AsymmetricKeyParameter)pemReader.ReadObject();
+            }
+            // 如需轉成 RsaKeyParameters：
+            RsaKeyParameters rsaKey = (RsaKeyParameters)publicKey;
+            // RSAOAEP RSAOAEP256 Diff Add new Sha256Digest()
+            var encryptEngine = new OaepEncoding(new RsaEngine(), new Sha256Digest());
+            //encryptEngine.Init(true, rsaPublic);
+            encryptEngine.Init(true, rsaKey);
+            byte[] encryptedCek = encryptEngine.ProcessBlock(cek, 0, cek.Length);
+
+            // 5. Compact JWE parts
+            string part1 = encodedHeader;
+            string part2 = Base64UrlEncode(encryptedCek);
+            string part3 = Base64UrlEncode(iv);
+            string part4 = Base64UrlEncode(ciphertext);
+            string part5 = Base64UrlEncode(tag);
+
+            string jwe = $"{part1}.{part2}.{part3}.{part4}.{part5}";
+            Console.WriteLine("Compact JWE:\n" + jwe);
+
+            // === Decrypt ===
+            // === 解密階段 ===
+            
+            // 解密 encryptedCek
+            AsymmetricCipherKeyPair keyPair; 
+            string privateKeyPath = Path.Combine("key", "private.pem");
+            using (var reader = File.OpenText(privateKeyPath))
+            {
+                var pemReader = new PemReader(reader);
+                keyPair = (AsymmetricCipherKeyPair)pemReader.ReadObject();
+            } 
+            // RSAOAEP RSAOAEP256 Diff Add new Sha256Digest()
+            var decryptEngine = new OaepEncoding(new RsaEngine(),new Sha256Digest());
+            decryptEngine.Init(false, keyPair.Private);
+            byte[] decryptedCek = decryptEngine.ProcessBlock(encryptedCek, 0, encryptedCek.Length);
+
+            // 解密 AES-GCM ciphertext
+            GcmBlockCipher gcmDec = new GcmBlockCipher(new AesEngine());
+            AeadParameters decParams = new AeadParameters(new KeyParameter(decryptedCek), 128, iv, aad);
+            gcmDec.Init(false, decParams);
+
+            byte[] cipherPlusTag = new byte[ciphertext.Length + tag.Length];
+            Array.Copy(ciphertext, 0, cipherPlusTag, 0, ciphertext.Length);
+            Array.Copy(tag, 0, cipherPlusTag, ciphertext.Length, tag.Length);
+
+            byte[] decrypted = new byte[ciphertext.Length];
+            int len2 = gcmDec.ProcessBytes(cipherPlusTag, 0, cipherPlusTag.Length, decrypted, 0);
+            gcmDec.DoFinal(decrypted, len2);
+
+            Console.WriteLine("\n[Decrypted Plaintext]");
+            Console.WriteLine(Encoding.UTF8.GetString(decrypted)); 
         }
     }
 }
