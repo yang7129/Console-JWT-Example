@@ -170,10 +170,10 @@ namespace Console_JWT_Example.JWE
             return result;
         }
 
-        public void exmple_RSAOAEP_A128CBC_HS256()
+        public void exmple_RSAOAEP_A256GCM()
         {
             //Example JWE using RSAES-OAEP and AES GCM
-            Console.WriteLine("exmple_RSAOAEP_A128CBC_HS256");
+            Console.WriteLine("exmple_RSAOAEP_A256GCM");
 
             string plaintext = "The true sign of intelligence is not knowledge but imagination.";
             string headerJson = "{\"alg\":\"RSA-OAEP\",\"enc\":\"A256GCM\"}";
@@ -340,10 +340,10 @@ namespace Console_JWT_Example.JWE
             Console.WriteLine(Encoding.UTF8.GetString(decrypted));
 
         } 
-        public void exmple_RSAOAEP256_A128CBC_HS256()
+        public void exmple_RSAOAEP256_A256GCM()
         {
             //Example JWE using RSAES-OAEP and AES GCM
-            Console.WriteLine("exmple_RSAOAEP256_A128CBC_HS256");
+            Console.WriteLine("exmple_RSAOAEP256_A256GCM");
             // 1. RFC 範例 Header
             string plaintext = "The true sign of intelligence is not knowledge but imagination.";
             string headerJson = "{\"alg\":\"RSA-OAEP-256\",\"enc\":\"A256GCM\"}";
