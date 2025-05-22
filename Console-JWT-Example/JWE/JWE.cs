@@ -178,9 +178,9 @@ namespace Console_JWT_Example.JWE
             string plaintext = "The true sign of intelligence is not knowledge but imagination.";
             string headerJson = "{\"alg\":\"RSA-OAEP\",\"enc\":\"A256GCM\"}";
             byte[] cek = new byte[] {
-            177,161,244,128,84,143,225,115,63,180,3,255,107,154,212,246,
-            138,7,110,91,112,46,34,105,47,130,203,46,122,234,64,252
-        };
+                177,161,244,128,84,143,225,115,63,180,3,255,107,154,212,246,
+                138,7,110,91,112,46,34,105,47,130,203,46,122,234,64,252
+            };
             byte[] iv = new byte[] { 227, 197, 117, 252, 2, 219, 233, 68, 180, 225, 77, 219 };
 
             // 1. Base64URL encode header
