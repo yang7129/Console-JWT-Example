@@ -16,6 +16,7 @@ Console.WriteLine("Start=============");
 //#region JWS
 //JWS JWS = new JWS();
 //JWS.exmple_HMACSHA_256();
+//JWS.exmple_HMACSHA_256_3DES_ECB();
 //#endregion
 //#region JWE
 //JWE JWE = new JWE();
@@ -23,10 +24,10 @@ Console.WriteLine("Start=============");
 //JWE.exmple_RSAOAEP_A256GCM();
 //JWE.exmple_RSAOAEP256_A256GCM();
 //#endregion
-#region RFC8017
-RFC8017 rFC8017 = new RFC8017();
-rFC8017.exmple_RFC8017();
-#endregion
+//#region RFC8017
+//RFC8017 rFC8017 = new RFC8017();
+//rFC8017.exmple_RFC8017();
+//#endregion
 
 Console.WriteLine("End=============");
 
